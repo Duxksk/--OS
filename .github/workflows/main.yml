@@ -1,0 +1,59 @@
+name: Build 뇌절OS UEFI App
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y \
+          build-essential \
+          uuid-dev \
+          iasl \
+          nasm \
+          python3 \
+          python3-distutils \
+          git
+
+    - name: Clone edk2
+      run: |
+        git clone https://github.com/tianocore/edk2.git
+        cd edk2
+        git submodule update --init --recursive
+
+    - name: Setup edk2 build environment
+      run: |
+        cd edk2
+        make -C BaseTools
+
+    - name: Copy 뇌절OS files into edk2
+      run: |
+        mkdir -p edk2/뇌절OS
+        cp 뇌절OS_App.c edk2/뇌절OS/
+        cp 뇌절OS_App.inf edk2/뇌절OS/
+        cp 뇌절OS_Pkg.dsc edk2/뇌절OS/
+
+    - name: Build 뇌절OS EFI
+      run: |
+        cd edk2
+        source edksetup.sh
+        build \
+          -a X64 \
+          -t GCC5 \
+          -p 뇌절OS/뇌절OS_Pkg.dsc
+
+    - name: Upload EFI artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: 뇌절OS_EFI
+        path: |
+          edk2/Build/**/X64/*.efi
